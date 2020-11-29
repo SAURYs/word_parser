@@ -46,54 +46,25 @@ class Main( QMainWindow,Ui_MainWindow):
         self.format_font_size_pt = {'八号': 5, '七号': 5.5, '小六': 6.5, '六号': 7.5, '小五': 9, '五号': 10.5,
                            '小四': 12, '四号': 14, '小三': 15, '三号': 16, '小二': 18, '二号': 22, '一号': 26, '小初': 36}
         # 正文错误
-        self.TEXT_font_size_error = []
-        self.TEXT_font_name_error = []
-        self.TEXT_alignment_error = []
-        self.TEXT_space_before_error = []
-        self.TEXT_space_after_error = []
-        self.TEXT_left_indent_error = []
-        self.TEXT_right_indent_error = []
-        self.TEXT_first_line_indent_error = []
+        self.text_error = []
         
         # 标题错误
-        self.title_font_size_error = []
-        self.title_font_name_error = []
-        self.title_alignment_error = []
-        self.title_space_before_error = []
-        self.title_space_after_error = []
-        self.title_left_indent_error = []
-        self.title_right_indent_error = []
-        self.title_first_line_indent_error = []
+        self.title_error = []
+
         # 思考题错误
         self.sikaoti_title_error = []
         self.sikaoti_content_error = []
         self.sikaoti_index = []
         # 前言部分格式错误
-        self.preface_font_name_error = []
-        self.preface_font_size_error = []
-        self.preface_alignment_error = []
+        self.preface_error = []
         # 附录错误
-        self.POSTSCRIPT_font_name_error = []
-        self.POSTSCRIPT_font_size_error = []
-        self.POSTSCRIPT_alignment_error = []
+        self.postscript_error = []
+
         # 封面页错误：
-        self.cover_font_size_error = []
-        self.cover_font_name_error = []
-        self.cover_alignment_error = []
-        self.cover_space_before_error = []
-        self.cover_space_after_error = []
-        self.cover_left_indent_error = []
-        self.cover_right_indent_error = []
-        self.cover_first_line_indent_error = []
+        self.cover_error = []
+
         # 内容提要错误
-        self.abstract_font_size_error = []
-        self.abstract_font_name_error = []
-        self.abstract_alignment_error = []
-        self.abstract_space_before_error = []
-        self.abstract_space_after_error = []
-        self.abstract_left_indent_error = []
-        self.abstract_right_indent_error = []
-        self.abstract_first_line_indent_error = []
+        self.abstract_error = []
         # 编审组错误
         self.BSZ_font_size_error = []
         self.BSZ_font_name_error = []
@@ -103,16 +74,10 @@ class Main( QMainWindow,Ui_MainWindow):
         self.BSZ_left_indent_error = []
         self.BSZ_right_indent_error = []
         self.BSZ_first_line_indent_error = []
+
         # 参考文献错误
-        self.reference_font_size_error = []
-        self.reference_font_size_error = []
-        self.reference_font_name_error = []
-        self.reference_alignment_error = []
-        self.reference_space_before_error = []
-        self.reference_space_after_error = []
-        self.reference_left_indent_error = []
-        self.reference_right_indent_error = []
-        self.reference_first_line_indent_error = []
+        self.reference_error = []
+
 
 
 
@@ -168,6 +133,10 @@ class Main( QMainWindow,Ui_MainWindow):
             以下是变量名
             """
             standrad_configration = self.get_standard(r'cfg1.yml')
+            # 输出文章所有能用python.docx提取出来的内容
+            # word_parser.show_all_content_fmt(path)
+            # 处理正文Normal样式
+            word_parser.normal_font_name, word_parser.normal_Chinese_font_name = word_parser.decide_style_normal(path)
 
             # 判断封面页
             print('处理封面页中')
@@ -177,20 +146,13 @@ class Main( QMainWindow,Ui_MainWindow):
                 if len(details) == len(fmt):
                     for index, fmt_elem in enumerate(fmt):
                         tmp = word_parser.error_process_unit('COVER',details[index],fmt_elem,standrad_configration)
-                        self.cover_font_size_error.append(tmp[0])
-                        self.cover_font_name_error.append(tmp[1])
-                        self.cover_alignment_error.append(tmp[2])
+                        self.cover_error.append(tmp)
                 else:
                     print('封面页信息不完整无法判断！提示：应包含以下信息：内部发行号,系列,机型,书名,分册,适用训练类别,主编,出版社,版次')
             else:
                 pass
-
-            for preface_size_error in self.cover_font_size_error:
-                print(preface_size_error)
-            for preface_name_error in self.cover_font_name_error:
-                print(preface_name_error)
-            for preface_alignment_error in self.cover_alignment_error:
-                print(preface_alignment_error)
+            for i in self.cover_error:
+                print(i)
 
             # 判断摘要页
             print('处理摘要页中...')
@@ -204,96 +166,87 @@ class Main( QMainWindow,Ui_MainWindow):
                 if len(details) == len(fmt):
                     for index, fmt_elem in enumerate(fmt):
                         if fmt_elem[0].replace(' ','') == '内容提要':
-                            tmp = word_parser.error_process_unit_for_each_para(fmt_elem,standrad_configration['ABSTRACT']['内容提要'].split(),'内容提要' )
-                            self.abstract_font_size_error.append(tmp[0])
-                            self.abstract_font_name_error.append(tmp[1])
-                            self.abstract_alignment_error.append(tmp[2])
+                            self.abstract_error.append(word_parser.error_process_unit_for_each_para(fmt_elem,standrad_configration['ABSTRACT']['内容提要'].split(),'内容提要' ))
                         elif fmt_elem[0].replace(' ','') == '（内部发行）':
-                            tmp = word_parser.error_process_unit_for_each_para(fmt_elem, standrad_configration['ABSTRACT']['内部发行'].split(),'内容提要')
-                            self.abstract_font_size_error.append(tmp[0])
-                            self.abstract_font_name_error.append(tmp[1])
-                            self.abstract_alignment_error.append(tmp[2])
+                            self.abstract_error.append(word_parser.error_process_unit_for_each_para(fmt_elem, standrad_configration['ABSTRACT']['内部发行'].split(),'内容提要'))
                         else:
-                            tmp = word_parser.error_process_unit_for_each_para(fmt_elem,standrad_configration['ABSTRACT']['正文'].split(),'内容提要' )
-                            self.abstract_font_size_error.append(tmp[0])
-                            self.abstract_font_name_error.append(tmp[1])
-                            self.abstract_alignment_error.append(tmp[2])
+                            self.abstract_error.append(word_parser.error_process_unit_for_each_para(fmt_elem,standrad_configration['ABSTRACT']['正文'].split(),'内容提要' ))
 
                 else:
                     print('封面页信息不完整无法判断！提示：应包含以下信息：内部发行号,系列,机型,书名,分册,适用训练类别,主编,出版社,版次')
             else:
                 pass
-
-            for preface_size_error in self.abstract_font_size_error:
-                print(preface_size_error)
-            for preface_name_error in self.abstract_font_name_error:
-                print(preface_name_error)
-            for preface_alignment_error in self.abstract_alignment_error:
-                print(preface_alignment_error)
+            for i in self.abstract_error:
+                print(i)
             # 判断编审组页
             print('处理编审组页中...')
             # 编审组不调用函数
             fmt = word_parser.get_BSZ_fmt(path)
-            standrad_BSZ = standrad_configration['AUTHOR']['编审组'].split()
-            standrad_ZUZHANG = standrad_configration['AUTHOR']['组长标题'].split()
-            standrad_ZUYUAN = standrad_configration['AUTHOR']['组员'].split()
+            if fmt == None:
+                print('没有找到编审组页！！！')
+            else:
+                standrad_BSZ = standrad_configration['AUTHOR']['编审组'].split()
+                standrad_ZUZHANG = standrad_configration['AUTHOR']['组长标题'].split()
+                standrad_ZUYUAN = standrad_configration['AUTHOR']['组员'].split()
 
-            for index, content in enumerate(fmt):
-                if content[0].endswith('工程') or content[0].endswith('编审组'):
-                    res = word_parser.error_process_unit_for_each_para(content,standrad_BSZ,'AUTHOR')
-                    self.BSZ_font_size_error.append(res[0])
-                    self.BSZ_font_name_error.append(res[1])
-                    self.BSZ_alignment_error.append(res[2])
-                    self.BSZ_space_before_error.append(res[3])
-                    self.BSZ_space_after_error.append(res[4])
-                    self.BSZ_left_indent_error.append(res[5])
-                    self.BSZ_right_indent_error.append(res[6])
-                    self.BSZ_first_line_indent_error.append(res[7])
+                for index, content in enumerate(fmt):
+                    if content[0].endswith('工程') or content[0].endswith('编审组'):
+                        res = word_parser.error_process_unit_for_each_para(content,standrad_BSZ,'AUTHOR')
+                        self.BSZ_font_size_error.append(res[0])
+                        self.BSZ_font_name_error.append(res[1])
+                        self.BSZ_alignment_error.append(res[2])
+                        self.BSZ_space_before_error.append(res[3])
+                        self.BSZ_space_after_error.append(res[4])
+                        self.BSZ_left_indent_error.append(res[5])
+                        self.BSZ_right_indent_error.append(res[6])
+                        self.BSZ_first_line_indent_error.append(res[7])
 
-                elif content[0].replace(' ','')[:2] =='组长':
-                    res = word_parser.error_process_unit_two_parts('组长',content,'BSZ',standrad_ZUZHANG,standrad_ZUYUAN)
-                    self.BSZ_font_size_error.append(res[0])
-                    self.BSZ_font_name_error.append(res[1])
-                    # 判断居中方式
-                    # 段前距
-                    # 段后距
-                    # 左缩进
-                    # 右缩进
-                    # 首行缩进
+                    elif content[0].replace(' ','')[:2] =='组长':
+                        res = word_parser.error_process_unit_two_parts('组长',content,'BSZ',standrad_ZUZHANG,standrad_ZUYUAN)
+                        self.BSZ_font_size_error.append(res[0])
+                        self.BSZ_font_name_error.append(res[1])
+                        # 判断居中方式
+                        # 段前距
+                        # 段后距
+                        # 左缩进
+                        # 右缩进
+                        # 首行缩进
 
-                elif content[0].replace(' ','')[:3] =='副组长':
-                    res = word_parser.error_process_unit_two_parts('副组长', content, 'BSZ', standrad_ZUZHANG, standrad_ZUYUAN)
-                    self.BSZ_font_size_error.append(res[0])
-                    self.BSZ_font_name_error.append(res[1])
+                    elif content[0].replace(' ','')[:3] =='副组长':
+                        res = word_parser.error_process_unit_two_parts('副组长', content, 'BSZ', standrad_ZUZHANG, standrad_ZUYUAN)
+                        self.BSZ_font_size_error.append(res[0])
+                        self.BSZ_font_name_error.append(res[1])
 
-                elif content[0].replace(' ','')[:2] =='组员':
-                    res = word_parser.error_process_unit_two_parts('组员', content, 'BSZ', standrad_ZUZHANG, standrad_ZUYUAN)
-                    self.BSZ_font_size_error.append(res[0])
-                    self.BSZ_font_name_error.append(res[1])
+                    elif content[0].replace(' ','')[:2] =='组员':
+                        res = word_parser.error_process_unit_two_parts('组员', content, 'BSZ', standrad_ZUZHANG, standrad_ZUYUAN)
+                        self.BSZ_font_size_error.append(res[0])
+                        self.BSZ_font_name_error.append(res[1])
 
-            for preface_size_error in self.BSZ_font_size_error:
-                print(preface_size_error)
-            for preface_name_error in self.BSZ_font_name_error:
-                print(preface_name_error)
-            for preface_alignment_error in self.BSZ_alignment_error:
-                print(preface_alignment_error)
-            for i in self.BSZ_space_before_error:
-                print(i)
-            for i in self.BSZ_space_after_error:
-                print(i)
-            for i in self.BSZ_left_indent_error:
-                print(i)
-            for i in self.BSZ_right_indent_error:
-                print(i)
-            for i in self.BSZ_first_line_indent_error:
-                print(i)
+                for preface_size_error in self.BSZ_font_size_error:
+                    print(preface_size_error)
+                for preface_name_error in self.BSZ_font_name_error:
+                    print(preface_name_error)
+                for preface_alignment_error in self.BSZ_alignment_error:
+                    print(preface_alignment_error)
+                for i in self.BSZ_space_before_error:
+                    print(i)
+                for i in self.BSZ_space_after_error:
+                    print(i)
+                for i in self.BSZ_left_indent_error:
+                    print(i)
+                for i in self.BSZ_right_indent_error:
+                    print(i)
+                for i in self.BSZ_first_line_indent_error:
+                    print(i)
+
             # 判断前言
             print('处理前言页中...')
             fmt = word_parser.get_preface_fmt(path)
-            preface_error = word_parser.process_preface(fmt,standrad_configration,'前言')
-            self.preface_font_size_error.append(preface_error[0])
-            self.preface_font_name_error.append(preface_error[1])
-            self.preface_alignment_error.append(preface_error[2])
+            self.preface_error = word_parser.process_preface(fmt,standrad_configration,'前言')
+            for i in self.preface_error:
+                print(i)
+            sys.stdout.flush()
+
 
 
             # 处理思考题格式
@@ -313,6 +266,16 @@ class Main( QMainWindow,Ui_MainWindow):
                         word_parser.error_process_unit_for_each_para(content, sikaoti_content_standard, '复习思考题题目'))
             if res[2] != None:
                 self.sikaoti_index = res[2]
+            print('思考题标题错误...')
+            for index,content in enumerate(self.sikaoti_title_error):
+                print("第%d章复习思考题标题错误:"% (index+1))
+                print(content)
+            print('处理思考题内容...')
+            for index,content in enumerate(self.sikaoti_content_error):
+                """
+                未定位具体位置
+                """
+                print(content)
 
 
 
@@ -324,32 +287,14 @@ class Main( QMainWindow,Ui_MainWindow):
             """
             该正文已经去除了各级标题、图表标题、思考题，剩下得是需要判别的正文
             """
+            print('处理正文中...')
             standard_main_body = standrad_configration['TEXT']['正文']
             title_index = word_parser.get_title_index(path)
             title_index = title_index+self.sikaoti_index
             main_part_error = word_parser.process_main_body(path,standard_main_body,title_index)
-            self.TEXT_font_size_error.append(main_part_error[0])
-            self.TEXT_font_name_error.append(main_part_error[1])
-            self.TEXT_alignment_error.append(main_part_error[2])
-            self.TEXT_space_before_error.append(main_part_error[3])
-            self.TEXT_space_after_error.append(main_part_error[4])
-            self.TEXT_left_indent_error.append(main_part_error[5])
-            self.TEXT_right_indent_error.append(main_part_error[6])
-            self.TEXT_first_line_indent_error.append(main_part_error[7])
-            for i in self.TEXT_font_size_error:
+            for i in main_part_error:
                 print(i)
-            for i in self.TEXT_font_name_error:
-                print(i)
-            for i in self.TEXT_alignment_error:
-                print(i)
-            for i in self.TEXT_space_before_error:
-                print(i)
-            for i in self.TEXT_space_after_error:
-                print(i)
-            for i in self.TEXT_left_indent_error:
-                print(i)
-            for i in self.TEXT_right_indent_error:
-                print(i)
+            sys.stdout.flush()
             # 首行缩进没写
 
             # 判断标题信息
@@ -373,32 +318,16 @@ class Main( QMainWindow,Ui_MainWindow):
             for type_index, each_type_set in enumerate(title_set[:4]):
                 for each_title in each_type_set:
                     error_res = word_parser.error_process_unit_for_each_para(each_title,title_standard[type_index].split(), title_type[type_index])
-                    print(error_res[0])
-                    print(error_res[1])
-                    print(error_res[2])
-                    print(error_res[3])
-                    print(error_res[4])
-                    print(error_res[5])
-                    print(error_res[6])
-                    print(error_res[7])
-                    self.title_font_size_error.append(error_res[0])
-                    self.title_font_name_error.append(error_res[1])
-                    self.title_alignment_error.append(error_res[2])
-                    self.title_space_before_error.append(error_res[3])
-                    self.title_space_after_error.append(error_res[4])
-                    #self.title_alignment_error.append(error_res[5])
-                    self.title_left_indent_error.append(error_res[5])
-                    self.title_right_indent_error.append(error_res[6])
-                    self.title_first_line_indent_error.append(error_res[7])
-
+                    self.text_error.append(error_res)
+            for i in self.text_error:
+                print(i)
+            # 处理表格、图像标题
 
             # 判断附录页
+            print('开始处理附录页...')
             fmt, sec_fmt = word_parser.get_appendix_format(path)
             if fmt != None and len(fmt) == 1:
-                tmp = word_parser.error_process_unit('POSTSCRIPT', '附录', fmt, standrad_configration)
-                self.font_size_error.append(tmp[0])
-                self.font_name_error.append(tmp[1])
-                self.alignment_error.append(tmp[2])
+                self.postscript_error.append(word_parser.error_process_unit('POSTSCRIPT', '附录', fmt, standrad_configration))
             else:
                 print('附录页信息不完整无法判断！提示：有且仅有一个大附录标题')
             if sec_fmt != None:
@@ -406,22 +335,15 @@ class Main( QMainWindow,Ui_MainWindow):
                 details = ['标题下附录'] * sec_fmt_len
                 if len(details) == sec_fmt_len:
                     for index, sec_fmt_elem in enumerate(sec_fmt):
-                        tmp = word_parser.error_process_unit('POSTSCRIPT', details[index], sec_fmt_elem,
-                                                 standrad_configration)
-                        print(tmp[0])
-                        print(tmp[1])
-                        print(tmp[2])
-                        self.POSTSCRIPT_font_size_error.append(tmp[0])
-                        self.POSTSCRIPT_font_name_error.append(tmp[1])
-                        self.POSTSCRIPT_alignment_error.append(tmp[2])
+                        self.postscript_error.append(word_parser.error_process_unit('POSTSCRIPT', details[index], sec_fmt_elem, standrad_configration))
+
                 else:
                     pass
             else:
                 pass  # 二级附录可无
-            for i in self.POSTSCRIPT_font_size_error:
+            for i in self.postscript_error:
                 print(i)
-            for i in self.POSTSCRIPT_font_size_error:
-                print(i)
+            sys.stdout.flush()
             # 判断文献页
             print('开始处理文献页...')
             fmt = word_parser.get_reference_format(path)
@@ -432,20 +354,17 @@ class Main( QMainWindow,Ui_MainWindow):
                 details[0] = '参考文献'
                 if len(details) == len(fmt):
                     for index, fmt_elem in enumerate(fmt):
-                        tmp = word_parser.error_process_unit('LITERATURE', details[index], fmt_elem, standrad_configration)
-                        self.reference_font_size_error.append(tmp[0])
-                        self.reference_font_name_error.append(tmp[1])
-                        self.reference_alignment_error.append(tmp[2])
+                        self.reference_error.append(word_parser.error_process_unit('LITERATURE', details[index], fmt_elem, standrad_configration))
+
                 else:
                     print('参考文献页信息不完整无法判断！提示：应包含以下信息：参考文献，文献')
             else:
                 pass
-            for i in self.reference_font_size_error:
+            for i in self.reference_error:
                 print(i)
-            for i in self.reference_font_name_error:
-                print(i)
-            for i in self.reference_alignment_error:
-                print(i)
+            self.textBrowser.append('检测完成！')
+            self.textBrowser.append(' ')
+            QApplication.processEvents()
         except IOError:
             print('IOError')
 

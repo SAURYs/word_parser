@@ -25,6 +25,8 @@ from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
 from docx.enum.style import WD_STYLE_TYPE
 from docx.oxml.ns import qn
 
+normal_font_name = None
+normal_Chinese_font_name = None
 
 class get_doc_default_Pr:
     '''
@@ -69,6 +71,12 @@ class get_doc_default_Pr:
                         else:
                             return None
 
+def show_all_content_fmt(path):
+    '''
+    输出所有段落格式便于调试
+    '''
+    for i in Document(path).paragraphs:
+        print(get_paragraph_format(i))
 
 
 def is_all_zh(string):
@@ -127,49 +135,96 @@ def get_table_format(path):
     :param path: docx的文件的绝对路径
     :return: table_font_name, table_font_size 字体、字号(Pt)
     '''
-    table_font_name =[]
-    table_font_size = []
+    fmt = []
     document = Document(path)
     tables = document.tables
     table_nums = len(tables)
     # 遍历每一个表格
-    for table in tables:
+    fmt = [[] for i in range(table_nums)]
+    for table_index,table_content in enumerate(tables):
         # 遍历每个表格中的内容
-        for row in table.rows:
+        for row in table_content.rows:
             for cell in row.cells:
                 _paragraphs = cell.paragraphs
                 for each_paragraphs in _paragraphs:
-                    runs = each_paragraphs.runs
-                    for run in runs:
-                        table_font_name.append(run.font.name)
-                        # 除以12700是为了获取其Pt值
-                        table_font_size.append(run.font.size.Pt())
-    return table_font_name, table_font_size
+                    fmt[table_index].append(get_paragraph_format(each_paragraphs))
+    return fmt
 
 
-def get_table_and_figure_title_format(paragraph):
+def get_tableTitle_format(paragraph):
     '''
     通过传入Document.paragraphs中的一个段落，来获得表的内容、字体名称、字体大小、段前距离、段后距离、首行缩进、是否居中等信息
+    图表还要检查是否序号与表名之间空一字,ie. 表2-2 物种的起源 不可以是：表2-2物种的起源,或者多空格的情况
+    但现在还有一行含有多个图表的情况[判断连续性的时候要分开才行]
     :param paragraph:  Document.paragraphs中的一个段落
     :return
     '''
-    table_format = []
-    figure_format = []
     each_paragraph = paragraph
     paragraph_content = each_paragraph.text
     content_without_space = paragraph_content.replace(' ', '')
+    table_format = []
+    pattern = '^[表]\d+[--]\d+'
+
     if content_without_space=='':
         pass
-    elif (content_without_space[0] == '表' and \
-            content_without_space[1].isdigit()and \
-            len(content_without_space) < 50):
-        table_format.append(get_paragraph_format(each_paragraph))
+    elif re.match(pattern, content_without_space) and len(content_without_space) < 50:
+        table_format = get_paragraph_format(each_paragraph)
+    return table_format
 
-    elif (content_without_space[0] == '图' and content_without_space[1].isdigit() and len(content_without_space) < 50):
-        figure_format.append(get_paragraph_format(each_paragraph))
 
-    return figure_format, table_format
+def get_imageTitle_format(paragraph):
+    '''
+    通过传入Document.paragraphs中的一个段落，来获得图标题的内容、字体名称、字体大小、段前距离、段后距离、首行缩进、是否居中等信息
+    图表还要检查是否序号与表名之间空一字,ie. 图2-2 物种的起源 不可以是：图2-2物种的起源,或者多空格的情况
+    但现在还有一行含有多个图表的情况[判断连续性的时候要分开才行]
+    :param paragraph:  Document.paragraphs中的一个段落
+    :return
+    '''
+    each_paragraph = paragraph
+    paragraph_content = each_paragraph.text
+    image_format = []
+    content_without_space = paragraph_content.replace(' ', '')
+    pattern = '^[图]\d+[--]\d+'
+    if content_without_space=='':
+        pass
+    elif re.match(pattern, content_without_space) and len(content_without_space) < 50:
+        image_format = get_paragraph_format(each_paragraph)
 
+    return image_format
+
+
+def get_xubiao_format(paragraph):
+    '''
+    获取续表标题及格式
+    :param paragraph:  Document.paragraphs中的一个段落
+    :return
+    '''
+    xubiao_format = []
+    each_paragraph = paragraph
+    paragraph_content = each_paragraph.text
+    content_without_space = paragraph_content.replace(' ', '')
+    pattern = '^续表\d+[--]\d+'
+    if content_without_space=='':
+        pass
+    elif re.match(pattern, content_without_space) and len(content_without_space) < 50:
+        xubiao_format = get_paragraph_format(each_paragraph)
+    return xubiao_format
+
+
+def table_title_has_space(title):
+    '''
+    该函数是判断表2-2 物种的起源这种，序号与图、表名称之间是否空1字
+    '''
+    pattern = '\d+[--]\d+'
+    search_res = re.search(pattern, title)
+    if search_res == None:
+        return False
+    else:
+        index = search_res.end()
+    if title[index]==' ':
+        return True
+    else:
+        return False
 
 def get_header_and_footer(path):
     '''
@@ -392,6 +447,7 @@ def get_numbered_title(path):
 
     figure_title_format = []
     table_title_format = []
+    xubiaoTitle_format = []
 
     paragraphs = document.paragraphs
     for each_paragraph in paragraphs:
@@ -410,16 +466,18 @@ def get_numbered_title(path):
                 auto_numbered_title_4.append(auto_numbered_title_content)
             else:
                 pass
-        content_without_space = text.replace(' ','')
-        if len(text) < 30:
-            # -----获得图像标题和表格标题属性------
-            if content_without_space == '':
-                pass
-            elif (content_without_space[0] == '表' and content_without_space[1].isdigit()):
-                table_title_format.append(get_paragraph_format(each_paragraph))
+        if text.strip()!='':
+            res1 = get_tableTitle_format(each_paragraph)
+            res2 = get_imageTitle_format(each_paragraph)
+            res3 = get_xubiao_format(each_paragraph)
+            if len(res1):
+                table_title_format.append(res1)
+            if len(res2):
+                figure_title_format.append(res2)
+            if len(res3):
+                xubiaoTitle_format.append(res3)
 
-            elif (content_without_space[0] == '图' and content_without_space[1].isdigit() ):
-                figure_title_format.append(get_paragraph_format(each_paragraph))
+        if len(text) < 30:
 
             # -------处理自动生成编号------
             if text in auto_numbered_title_1:
@@ -441,8 +499,8 @@ def get_numbered_title(path):
                 title_1_format.append(get_paragraph_format(each_paragraph))
             elif re.match(_pattern, text):
                 title_0_format.append(get_paragraph_format(each_paragraph))
-    FORMAT = (title_0_format, title_1_format, title_2_format, title_3_format, \
-                                title_4_format, table_title_format, figure_title_format)
+    FORMAT = [title_0_format, title_1_format, title_2_format, title_3_format, \
+                                title_4_format, table_title_format, figure_title_format,xubiaoTitle_format]
     return FORMAT
 
 
@@ -543,13 +601,20 @@ def get_paragraph_format(paragraph):
 
 
         if each_run.text.isascii():
+            '''调试过程中发现的问题，再有的时候中文字体和ascii字符可能会存储在同一个run中，这是按照下列判断会误判'''
             font_name.append(each_run_font_name if each_run_font_name else run_style_font_name)
         else:
             font_name.append(each_run_Chinese_font_name if each_run_Chinese_font_name else run_style_font_Chinese_font_name)
 
-        font_size.append(each_run.font.size/12700 if each_run.font.size else run_style_font_size)
+        font_size.append(each_run.font.size if each_run.font.size else run_style_font_size)
 
-        #font_size_final = [Length(i).pt for i in font_size]
+        for index, content in enumerate(font_size):
+            if content==None:
+                pass
+            elif content < 100:
+                pass
+            else:
+                font_size[index] = content/12700
 
     title_content_and_format = [text,run_text, font_size, font_name, alignment, space_before, space_after, left_indent ,right_indent,first_line_indent]
 
@@ -674,7 +739,7 @@ def get_cover_fmt(path):
     # 教材编号
     textbook_SN_pattern = r'\w\-\w\-\w{5}\-\w{2}'
     for index, paragraph in enumerate(paragraphs):
-        if index < 30:
+        if index < 130:
             title =  paragraph.text.replace(' ','')
             if re.match(textbook_SN_pattern,title):
                 start_index = index
@@ -684,14 +749,14 @@ def get_cover_fmt(path):
         else:
             return None
     for index, paragraph in enumerate(paragraphs):
-        if index < 30:
+        if index < 130:
             if paragraph.text.replace(' ','') == '内容提要':
                 end_index = index
                 break
         else:
             return None
     for index, paragraph in enumerate(paragraphs):
-        if index in range(start_index, end_index - 1) and paragraph.text.replace(' ', '') != '':
+        if index in range(start_index, end_index) and paragraph.text.replace(' ', '') != '':
             content_and_fmt.append(get_paragraph_format(paragraph))
     return content_and_fmt
 
@@ -706,7 +771,7 @@ def get_informative_abstract_fmt(path):
     content_and_fmt = []
     next_part_title = '教材体系工程'
     for index, paragraph in enumerate(paragraphs):
-        if index < 30:
+        if index < 130:
             if paragraph.text.replace(' ','') == '内容提要':
                 start_index = index
                 break
@@ -715,14 +780,14 @@ def get_informative_abstract_fmt(path):
     for index, paragraph in enumerate(paragraphs):
         if index < start_index:
             continue
-        if index < 60:
+        if index < 160:
             if next_part_title in paragraph.text.replace(' ',''):
                 end_index = index
                 break
         else:
             return None
     for index, paragraph in enumerate(paragraphs):
-        if index in range(start_index, end_index-1) and paragraph.text.replace(' ', '') != '':
+        if index in range(start_index, end_index) and paragraph.text.replace(' ', '') != '':
             content_and_fmt.append(get_paragraph_format(paragraph))
     return content_and_fmt
 
@@ -736,6 +801,7 @@ def get_BSZ_fmt(path):
     paragraphs = document.paragraphs
     content_and_fmt = []
     next_part_title = '前言'
+    '''
     for index, paragraph in enumerate(paragraphs):
         if index < 100 :
             text_temp = paragraph.text.replace(' ','')
@@ -744,26 +810,27 @@ def get_BSZ_fmt(path):
                 break
         else:
             return None
+    '''
     for index, paragraph in enumerate(paragraphs):
 
-        if index < 100 :
+        if index < 200 :
             text_temp = paragraph.text.replace(' ','')
             if '编审组' in text_temp:
-                start_index = index
+                start_index = index-1
                 break
         else:
             return None
     for index, paragraph in enumerate(paragraphs):
         if index < start_index:
             continue
-        if index < 100:
+        if index < 250:
             if next_part_title in paragraph.text.replace(' ',''):
                 end_index = index
                 break
         else:
             return None
     for index, paragraph in enumerate(paragraphs):
-        if index in range(start_index-1, end_index-1) and paragraph.text.replace(' ', '') != '':
+        if index in range(start_index, end_index) and paragraph.text.replace(' ', '') != '':
             content_and_fmt.append(get_paragraph_format(paragraph))
     return content_and_fmt
 
@@ -779,7 +846,7 @@ def get_preface_fmt(path, start_index=0):
     next_part_title = '目录'
     # 获取该页的起始页
     for index, paragraph in enumerate(paragraphs):
-        if index < 90:
+        if index < 200:
             if paragraph.text.replace(' ','') == '前言':
                 start_index = index
                 break
@@ -788,8 +855,8 @@ def get_preface_fmt(path, start_index=0):
     for index, paragraph in enumerate(paragraphs):
         if index < start_index:
             continue
-        if index < 150:
-            if next_part_title in paragraph.text.replace(' ',''):
+        if index < 250:
+            if next_part_title == paragraph.text.replace(' ',''):
                 end_index = index
                 break
         else:
@@ -879,14 +946,7 @@ def process_main_body(path,standard,title_index):
     right_indentation = standard[6]
     '''
     # ---------return内容-----------
-    font_size_error = []
-    font_name_error = []
-    alignment_error = []
-    space_before_error = []
-    space_after_error = []
-    left_indent_error = []
-    right_indent_error = []
-    first_line_indent_error = []
+    all_errors = []
     # ==========================
     start_index = -1
     end_index = -1
@@ -916,16 +976,8 @@ def process_main_body(path,standard,title_index):
         else:
             fmt = get_paragraph_format(para)
             error = error_process_unit_for_each_para(fmt,standard,'TEXT')
-            font_size_error.append(error[0])
-            font_name_error.append(error[1])
-            alignment_error.append(error[2])
-            space_before_error.append(error[3])
-            space_after_error.append(error[4])
-            left_indent_error.append(error[5])
-            right_indent_error.append(error[6])
-            first_line_indent_error.append(error[7])
-    return [font_size_error, font_name_error, alignment_error,space_before_error,space_after_error,\
-            left_indent_error,right_indent_error,first_line_indent_error]
+            all_errors.append(error)
+    return all_errors
 
 def process_title(fmt,standard,type):
     '''
@@ -933,29 +985,16 @@ def process_title(fmt,standard,type):
     :param fmt:包含级标题的格式列表
     :param standard:
     :param type:title的类型，是一级标题还是二级标题等或者说是图表标题...
-    :return: 错误信息
+    :return: 错误信息列表[['text',[字体大小错误run],[字体名称错误run],bool,bool,bool,bool,bool...],['text',[字体大小错误run],[字体名称错误run],bool,bool,bool,bool,bool...],...]
     '''
-    font_size_error=[]
-    font_name_error = []
-    alignment_error = []
-    space_before_error = []
-    space_after_error = []
-    left_indent_error = []
-    right_indent_error = []
-    first_line_indent_error = []
+    all_errors = []
+
     for i in fmt:
         res = error_process_unit_for_each_para(i,standard,type)
-        font_size_error.append(res[0])
-        font_name_error.append(res[1])
-        alignment_error .append(res[2])
-        space_before_error.append(res[3])
-        space_after_error .append(res[4])
-        left_indent_error.append(res[5])
-        right_indent_error .append(res[6])
-        first_line_indent_error .append(res[7])
+        all_errors.append(res)
 
-    return [font_size_error, font_name_error, alignment_error,space_before_error,space_after_error,left_indent_error\
-            ,right_indent_error,first_line_indent_error]
+
+    return all_errors
 
 
 
@@ -978,31 +1017,25 @@ def error_process_unit(category,detail,paragraph_fmt_elem, standard_config):
 
     font_size_error =[]
     font_name_error=[]
-    alignment_error=[]
+    alignment_error = False
     format_font_size_pt = {'八号': 5, '七号': 5.5, '小六': 6.5, '六号': 7.5, '小五': 9, '五号': 10.5,
                            '小四': 12, '四号': 14, '小三': 15, '三号': 16, '小二': 18, '二号': 22, '一号': 26, '小初': 36,'初号':42}
-        # 判断字号
+    # 判断字号
+    '''之加入错误的内容，不显示具体错误信息，以段为单位进行报错'''
     font_size = format_font_size_pt[standard[0]]
     font_name = standard[1]
     for index0, elem0 in enumerate(paragraph_fmt_elem[2]):
-        print(index0,elem0)
         if elem0 != font_size:
-            error = category + ': '+paragraph_fmt_elem[0]+' 段中 ' + paragraph_fmt_elem[1][index0] + '字体大小错误，应为' + \
-                    standard[0]
-            font_size_error.append(error)
+            font_size_error.append(paragraph_fmt_elem[1][index0])
         # 判断字体名称
     for index1,elem1 in enumerate(paragraph_fmt_elem[3]):
         if elem1 != font_name:
-            error = category+': ' +paragraph_fmt_elem[0]+' 段中 '+ paragraph_fmt_elem[1][index1] + '字体名称错误，应为' + \
-                            standard[1]
-            font_name_error.append(error)
+            font_name_error.append(paragraph_fmt_elem[1][index1])
             # 判断居中方式
     alignment = paragraph_fmt_elem[4] if paragraph_fmt_elem[4] else 0
     if alignment != standard[2]:
-        error = category + ': ' + paragraph_fmt_elem[0]+ ' 居中方式错误，应为' + \
-                        str(standard[2])
-        alignment_error.append(error)
-    return [font_size_error, font_name_error,alignment_error]
+        alignment_error = True
+    return [paragraph_fmt_elem[0],font_size_error, font_name_error,alignment_error]
 
 def error_process_unit_for_each_para(paragraph_fmt_elem, standard,category):
     '''
@@ -1021,12 +1054,12 @@ def error_process_unit_for_each_para(paragraph_fmt_elem, standard,category):
     # 错误列表
     font_size_error = []
     font_name_error = []
-    alignment_error = []
-    space_before_error = []
-    space_after_error = []
-    left_indent_error = []
-    right_indent_error = []
-    first_line_indent_error = []
+    alignment_error = False
+    space_before_error = False
+    space_after_error = False
+    left_indent_error = False
+    right_indent_error = False
+    first_line_indent_error = False
 
     format_font_size_pt = {'八号': 5, '七号': 5.5, '小六': 6.5, '六号': 7.5, '小五': 9, '五号': 10.5,
                            '小四': 12, '四号': 14, '小三': 15, '三号': 16, '小二': 18, '二号': 22, '一号': 26, '小初': 36}
@@ -1041,43 +1074,31 @@ def error_process_unit_for_each_para(paragraph_fmt_elem, standard,category):
 
     for index,elem in enumerate(paragraph_fmt_elem[2]):
         if elem != font_size:
-            error = category + ': ' + paragraph_fmt_elem[0] + ' 段中 ' + paragraph_fmt_elem[1][index] + '字体大小错误，应为' + standard[0]
-            font_size_error.append(error)
-        # 判断字体名称
+            font_size_error.append(paragraph_fmt_elem[1][index])
+    # 判断字体名称
     for index1,elem1 in enumerate(paragraph_fmt_elem[3]):
         if elem1 != font_name:
-            error = category + ': ' + paragraph_fmt_elem[0] + ' 段中 ' + paragraph_fmt_elem[1][index1] + '字体名称错误，应为' +  standard[1]
-            font_name_error.append(error)
+            font_name_error.append(paragraph_fmt_elem[1][index1])
     # 判断居中方式
     alignment = paragraph_fmt_elem[4] if paragraph_fmt_elem[4] else 0
     if alignment != standard[2]:
-        error = category + ': ' + paragraph_fmt_elem[0] + ' 居中方式错误，应为' + \
-                str(standard[2])
-        alignment_error.append(error)
+        alignment_error = True
     # 判断段前距
     space_before = paragraph_fmt_elem[5] if paragraph_fmt_elem[5] else 0
     if space_before != standard[3]:
-        error = category + ': ' + paragraph_fmt_elem[0] + ' 段前缩进值方式错误，应为' + \
-                str(standard[3])
-        space_before_error.append(error)
+        space_before_error = True
     # 判断段后距
     space_after = paragraph_fmt_elem[6] if paragraph_fmt_elem[7] else 0
     if space_after != standard[4]:
-        error = category + ': ' + paragraph_fmt_elem[0] + ' 段后缩进值方式错误，应为' + \
-                str(standard[4])
-        space_after_error.append(error)
+        space_after_error = True
     # 判断左缩进
     left_indent = paragraph_fmt_elem[7] if paragraph_fmt_elem[7] else 0
     if left_indent != standard[5]:
-        error = category + ': ' + paragraph_fmt_elem[0] + ' 左缩进值方式错误，应为' + \
-                str(standard[5])
-        left_indent_error.append(error)
+        left_indent_error = True
     # 判断右缩进
     right_indent = paragraph_fmt_elem[8] if paragraph_fmt_elem[8] else 0
     if right_indent != standard[6]:
-        error = category + ': ' + paragraph_fmt_elem[0] + ' 右缩进值方式错误，应为' + \
-                str(standard[6])
-        right_indent_error.append(error)
+        right_indent_error = True
     # 判断首行缩进
     '''
     first_line_indent = paragraph_fmt_elem[9] if paragraph_fmt_elem[9] else 0
@@ -1087,7 +1108,7 @@ def error_process_unit_for_each_para(paragraph_fmt_elem, standard,category):
         first_line_indent_error.append(error)
         '''
 
-    return [font_size_error, font_name_error, alignment_error,space_before_error,space_after_error,left_indent_error\
+    return [paragraph_fmt_elem[0],font_size_error, font_name_error, alignment_error,space_before_error,space_after_error,left_indent_error\
             ,right_indent_error,first_line_indent_error]
 
 def error_process_unit_two_parts(part1,fmt,category,standard1,standard2):
@@ -1101,12 +1122,7 @@ def error_process_unit_two_parts(part1,fmt,category,standard1,standard2):
     :paras standard2 第二部分标准
     :return  error_list 错误列表
     '''
-    font_size_error = []
     font_name_error = []
-    font_size_error = []
-    font_size_error = []
-    font_size_error = []
-    font_size_error = []
     font_size_error = []
     standard1[2] = float(standard1[2])
     standard1[3] = float(standard1[3])
@@ -1170,11 +1186,9 @@ def process_preface(fmt,standard,type):
     :params standard 前言标准
     :params type 前言中需要判断的四个类型
     '''
-    error0 = []
-    error1 = []
-    error2 = []
-    error3 = []
-
+    if fmt == None:
+        return []
+    res = []
     preface_standard_title = standard['PREFACE']['前言'].split()
     preface_standard_main_part = standard['PREFACE']['正文'].split()
     preface_standard_author = standard['PREFACE']['编者'].split()
@@ -1183,14 +1197,18 @@ def process_preface(fmt,standard,type):
     for each_paragraph in fmt:
         if each_paragraph[0].replace(' ','') =='前言':
             error0 = error_process_unit_for_each_para(each_paragraph,preface_standard_title,'前言标题')
+            res.append(error0)
         elif each_paragraph[0].startswith('编者'):
-            error2.append(error_process_unit_for_each_para(each_paragraph,preface_standard_author,'前言作者'))
+            error1 = error_process_unit_for_each_para(each_paragraph,preface_standard_author,'前言作者')
+            res.append(error1)
         elif re.match(date_pattern,each_paragraph[0]):
-            error3.append(error_process_unit_for_each_para(each_paragraph, preface_standard_date, '前言日期'))
+            error2 = error_process_unit_for_each_para(each_paragraph, preface_standard_date, '前言日期')
+            res.append(error2)
         else:
-            error1.append(error_process_unit_for_each_para(each_paragraph, preface_standard_main_part, '前言正文'))
+            error3 = error_process_unit_for_each_para(each_paragraph, preface_standard_main_part, '前言正文')
+            res.append(error3)
 
-    return [error0,error1,error2,error3]
+    return res
 
 
 def title_continuity():
@@ -1215,56 +1233,254 @@ def consistency(path):
     pass
 
 
+def title_continuity(path):
+    '''
+        title_text_list :去掉图表标题的文字列表
+        title_index_list：各级标题和图表标题的索引
+        unprocessed_title_list:未处理的正序、不含图表标题 的文字列表
+        title_list: 处理后 正序、去掉汉字等字符、只剩数字和点 的标题列表
+
+        detect_result： 形式：[[缺少的标题],[[顺序错误的标题]]]，故分别取为detect_result[0] 与 detect_result[1][0]
+      '''
+    doc = Document(path)
+    pars = doc.paragraphs
+    #----------得到所有标题的格式--------
+    all_fmt = get_numbered_title(path)
+    #----------去掉图表标题----------
+    fmt = all_fmt[0:4]
+    '''----------得到正序的标题列表-----------'''
+    title_text_list = []
+    title_index_list = []
+    unprocessed_title_list = []
+    title_list =[]
+    for i in range(len(fmt)):
+        for j in range(len(fmt[i])):
+            title_text_list.append(fmt[i][j][0])
+     #------------判断如果标题文字在某段中，则获得索引，这样可保证列表中标题的正序--------------
+    for m in range(len(pars)):
+        if pars[m].text in title_text_list:
+            title_index_list.append(m)
+    #-------利用正序索引列表得到正序标题文字列表-------------
+    for n in range(len(title_index_list)):
+        unprocessed_title_list.append(pars[title_index_list[n]].text)
+    '''-----对标题列表进行处理，去掉点外的各种符号，并去掉一级标题中的“第”字，使其只含数字和点------------'''
+    r = '[’!"#$%&\'（）*+,/:;<=>?@[\\]^\-_`{|}~\n。！， ]+'
+    for j in range(len(unprocessed_title_list)):
+        unprocessed_title_list[j] = re.sub(r, '', unprocessed_title_list[j])
+        if re.match(r'^第\w{1,2}?章', unprocessed_title_list[j]):
+            unprocessed_title_list[j] = unprocessed_title_list[j][1:]  # 去掉“第”字
+    print(unprocessed_title_list)
+    for i in range(len(unprocessed_title_list)):
+        title_list.append(extract_nums(unprocessed_title_list[i])) #得到纯数字和点的标题列表
+    print(title_list)
+
+    ''' ----进行判断-----用到的函数有----extract_nums----title_continuous-------point_to_number-----output_miss_list----'''
+    detect_result = title_continuous(title_list)
+    # print(detect_result)
+    # print('缺少的标题有：', detect_result[0])
+    # print('顺序错误的标题为：', detect_result[1][0])
+    return detect_result
 
 
+
+
+def extract_nums(str_text):
+    #-------去掉标题文字--------
+    for i,t in enumerate(str_text):
+        # if t.isdigit():
+        if t in '0123456789.':
+            continue
+        else:
+            return str_text[:i]
+    return str_text
+
+
+def title_continuous(catalogue_number_list):
+    for j in range(len(catalogue_number_list)):
+        if catalogue_number_list:
+            if catalogue_number_list[j]:
+                if catalogue_number_list[j][-1] =='.':
+                    catalogue_number_list[j] = catalogue_number_list[j][:-1]
+                elif catalogue_number_list[j][0] == '.':
+                    catalogue_number_list[j] = catalogue_number_list[j][1:]
+    temp_list = catalogue_number_list[:]
+    for i in temp_list:
+        if i:
+            for j in i:
+                if not j.isdigit() and j != '.':
+                    catalogue_number_list.remove(i)
+                    break
+                elif i[0] == '0':
+                    catalogue_number_list.remove(i)
+                    break
+                else:
+                    pass
+        else:
+            catalogue_number_list.remove(i)
+    list_miss = []
+    list_discrete = []
+    if catalogue_number_list:
+        list_che = []
+        if catalogue_number_list[0] != '1':
+            list_miss.append('1')
+        for i in catalogue_number_list:
+            if not list_che:
+                list_che.append(i)
+                continue
+            if i.count('.') == list_che[-1].count('.'):
+                num_i = point_to_number(i)
+                num_list = point_to_number(list_che[-1])
+                if len(str(num_i)) != len(str(num_list)):
+                    m = abs(len(str(num_i)) - len(str(num_list)))
+                    if len(str(num_i)) < len(str(num_list)):
+                        for j in range(m):
+                            num_i *= 10
+                    else:
+                        for j in range(m):
+                            num_list *= 10
+                if num_i - num_list == 1:
+                    list_che.pop()
+                    list_che.append(i)
+                elif num_i - num_list > 1:
+                    for kk in output_miss_list(list_che[-1], i):
+                        if kk not in list_miss:
+                            list_miss.append(kk)
+                    list_che.pop()
+                    list_che.append(i)
+                elif num_i - num_list < 1:
+                    temp = []
+                    temp.append(list_che[-1])
+                    temp.append(i)
+                    list_discrete.append(temp)
+                    list_che.pop()
+                    list_che.append(i)
+            elif i.count('.') > list_che[-1].count('.'):
+                num_i = point_to_number(i)
+                num_list = point_to_number(list_che[-1])
+                if len(str(num_i)) != len(str(num_list)):
+                    m = abs(len(str(num_i)) - len(str(num_list)))
+                    if len(str(num_i)) < len(str(num_list)):
+                        for j in range(m):
+                            num_i *= 10
+                    else:
+                        for j in range(m):
+                            num_list *= 10
+                if num_i - num_list == 1:
+                    # list_che.pop()
+                    list_che.append(i)
+                elif num_i - num_list > 1:
+                    for kk in output_miss_list(list_che[-1], i):
+                        if kk not in list_miss:
+                            list_miss.append(kk)
+                            # mid = []
+                            # mid.append(int(dic[list_che[-1]]))
+                            # mid.append(int(dic[i]))
+                            # list_miss_page.append(mid)
+                    # list_che.pop()
+                    list_che.append(i)
+                elif num_i - num_list < 1:
+                    temp = []
+                    temp.append(list_che[-1])
+                    temp.append(i)
+                    list_discrete.append(temp)
+                    list_che.append(i)
+            elif i.count('.') < list_che[-1].count('.'):
+                while i.count('.') != list_che[-1].count('.'):
+                    list_che.pop()
+                    if not list_che:
+                        list_che.append(i)
+                        break
+                if point_to_number(i) - point_to_number(list_che[-1]) == 1:
+                    list_che.pop()
+                    list_che.append(i)
+                elif point_to_number(i) - point_to_number(list_che[-1]) > 1:
+                    for kk in output_miss_list(list_che[-1], i):
+                        if kk not in list_miss:
+                            list_miss.append(kk)
+                    list_che.pop()
+                    list_che.append(i)
+                elif point_to_number(i) - point_to_number(list_che[-1]) < 1:
+                    temp = []
+                    temp.append(list_che[-1])
+                    temp.append(i)
+                    list_discrete.append(temp)
+                    list_che.pop()
+                    list_che.append(i)
+        return list_miss, list_discrete
+    else:
+        return [],[]
+def point_to_number(s):
+    res = ''
+    for i in s:
+        if i.isdigit():
+            res += i
+    if res:
+        return int(res)
+    else:
+        return False
+def output_miss_list(a, b):
+    temp_a = a.split('.')
+    temp_b = b.split('.')
+    min_length = min(len(temp_a), len(temp_b))
+    for i in range(min_length):
+        if int(temp_a[i]) > int(temp_b[i]):
+            return []
+    temp_str = ''
+    res = []
+    if len(temp_a) != len(temp_b):
+        n = max(len(temp_a),len(temp_b)) - min(len(temp_a),len(temp_b))
+        if len(temp_a) < len(temp_b):
+            for i in range(n):
+                temp_a.append('0')
+        else:
+            for i in range(n):
+                temp_b.append('0')
+    for i in range(len(temp_a)):
+        if temp_a[i] != temp_b[i]:
+            m = i
+            for k in range(m+1 ,len(temp_a)):
+                temp_a[k] = '0'
+            break
+
+    while temp_str != b:
+        temp_str = ''
+        for i in range(len(temp_a)):
+            if temp_a[i] == temp_b[i]:
+                temp_str += temp_a[i]
+                temp_str += '.'
+            else:
+                temp_str += str(int(temp_a[i]) + 1)
+                temp_a[i] = str(int(temp_a[i]) + 1)
+                if temp_str != b:
+
+                    res.append(temp_str)
+                break
+        if temp_str[-1] == '.':
+            temp_str = temp_str[:-1]
+    return res
+
+
+def decide_style_normal(path):
+    '''
+
+    '''
+    doc = Document(path)
+    normal = doc.styles['Normal']
+    if normal.font.name == None:
+        normal.font.name = get_doc_default_Pr.font_name(path)
+        global normal_font_name
+        normal_font_name = normal.font.name
+    if normal.font.Chinese_font_name == None:
+        normal.font.Chinese_font_name = get_doc_default_Pr.Chinese_font_name(path)
+        global normal_Chinese_font_name
+        normal_Chinese_font_name = normal.font.Chinese_font_name
+    return normal_font_name, normal_Chinese_font_name
 
 if __name__ =='__main__':
-    #path = r'G:\v1\files_for_testing\第4章 通信技术基础.docx'
-    #path = r'G:\v1\files_for_testing\第5章无线电导航基本原理.docx'
-    #path = r'G:\v1\files_for_testing\第3章 通信电子线路基础（修）.doc.docx'
-    #path =r'E:\v1\files_for_testing\1机务系统教材版式规范模板-Word版-20190719.docx'
+
     path = r'C:\1机务系统教材版式规范模板-Word版-20190719.docx'
-    #path = r'G:\v1\files_for_testing\auto_numbered.docx'
-    #path = r'G:\v1\files_for_testing\信号与图像处理建模、求解和应用课程设计模板.docx'
-    # path = r'G:\v1\files_for_testing\第三章.docx'
-    #path = r'G:\测试文档\基于深度学习的航电设备故障诊断-CNN(1).docx'
-    #path = r'G:\测试文档\1.docx'
-    #styles = get_styles(path)
-    #path = r'E:\Link16\多源信息融合 1022.docx'
-    #path = r'H:\DocFormatCheckProject\Word-check\ocr软件适应性改进需求说明20191127\1 机务系统教材\1机务系统教材版式规范模板-Word版-20190719.docx'
-    '''
-    for i in styles:
-        if 'CHAR' in str(i.type):
-            print(i.name, '|',i.font.name,'|', i.base_style)
-        #print(i.font.name)
-        '''
-
+    #path = r'G:\v1\files_for_testing\无兼容性2机务系统教材版式规范模板-Word版-20190719.docx'
     doc = Document(path)
-
-    '''
-    s = doc.styles.default(WD_STYLE_TYPE.PARAGRAPH)
-    #s = styles['Normal']
-    print(s.name,s.font.name, s.font.size)
-    c = doc.styles.default(WD_STYLE_TYPE.CHARACTER)
-    #s = styles['Normal']
-    print(c.name,c.font.name, c.font.size)
-    
-    f = open('result3.txt', 'w')
-    for i in doc.paragraphs:
-        print(get_paragraph_format(i))
-        # f.write(str(i))
-           res = get_numbered_title(path)
-    _,_,sec,_,_,_,_=res
-    for i in res:
-        print(i)
-        
-    f.close()
- 
-    """
-    对Normal属性的修改需要放在主函数中进行
-    """
-    '''
-
     normal = doc.styles['Normal']
     if normal.font.name == None:
         normal.font.name = get_doc_default_Pr.font_name(path)
@@ -1273,17 +1489,11 @@ if __name__ =='__main__':
         normal.font.Chinese_font_name = get_doc_default_Pr.Chinese_font_name(path)
         normal_Chinese_font_name = normal.font.Chinese_font_name
     print(normal.font.name,normal.font.Chinese_font_name)
-    '''
-    res = doc.paragraphs
-    styles = doc
-    for i in res:
-        sec = get_paragraph_format(i)
-        print(sec)
-        '''
+    RES = get_numbered_title(path)
+    for i in RES:
+        print(i)
 
-    print('-'*50)
-    res1,res2 = get_reference_format(path)
-    print([res1,res2])
+
 
 
 
