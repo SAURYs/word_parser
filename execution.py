@@ -15,8 +15,6 @@ import yaml
 import word_parser
 from PyQt5.QtCore import QStringListModel
 
-
-
 class Main( QMainWindow,Ui_MainWindow):
     """
     主界面
@@ -39,7 +37,6 @@ class Main( QMainWindow,Ui_MainWindow):
         self.initial_setting_yml.close()
         # 路径变量
         self.standard_path = None
-
         self.label_6.setText(self.initial_setting)
         self.docx_files_path = None
         self.standard_config = None
@@ -74,12 +71,14 @@ class Main( QMainWindow,Ui_MainWindow):
         self.BSZ_left_indent_error = []
         self.BSZ_right_indent_error = []
         self.BSZ_first_line_indent_error = []
-
         # 参考文献错误
         self.reference_error = []
-
-
-
+        # 缺少的标题
+        self.title_absence = None
+        # 标题顺序错误
+        self.title_wrong_order = None
+        # 图表序号与标题正文之间空一字 ie. 图2-2 流畅的python
+        self.title_space_error =[]
 
     def get_standard(self, path):
         '''
@@ -89,7 +88,6 @@ class Main( QMainWindow,Ui_MainWindow):
         standard = yaml.load(f, Loader = yaml.FullLoader)
 
         return standard
-
 
     def setting(self):
         '''
@@ -114,6 +112,8 @@ class Main( QMainWindow,Ui_MainWindow):
         输出log文件
         '''
         print('要检测的文件名： '+ path)
+        
+        
         diary_log_path = os.path.join(os.getcwd(),r'content.log')
         outputfile = open(diary_log_path,'w',encoding='UTF-8')
         sys.stdout = outputfile
@@ -132,11 +132,67 @@ class Main( QMainWindow,Ui_MainWindow):
             """
             以下是变量名
             """
-            standrad_configration = self.get_standard(r'cfg1.yml')
+            #print(main.configuration.name)
+            #current_name=main.label_6.text()
+            #current_file= k for (k,v) in main.configuration.name.items() if v == current_name
+            #print(main.configuration.name)
+            current_name=main.label_6.text()
+            def get_key2(dct, value):
+                return [k for (k,v) in dct.items() if v == value]
+            current_file=get_key2(main.configuration.name,current_name)
+            standrad_configration = self.get_standard(current_file[0])
+            print(current_file[0],current_name)
+            self.textBrowser.append(f'当前检测配置名称{current_name}')
+            QApplication.processEvents()
+
+            """
+            其他检测选项
+            """
+            title_check = standrad_configration['CHECK']['检测标题连续性']
+            image_title_continue_check = standrad_configration['CHECK']['检测图片标题连续性']
+            table_title_continue_check = standrad_configration['CHECK']['检测表格标题']
+            postscript_title_continue_check = standrad_configration['CHECK']['检测附录编号顺序连续性']
+            reference_title_continue_check = standrad_configration['CHECK']['检测参考文献顺序连续性']
+
+            """===================================================================================="""
             # 输出文章所有能用python.docx提取出来的内容
             # word_parser.show_all_content_fmt(path)
             # 处理正文Normal样式
             word_parser.normal_font_name, word_parser.normal_Chinese_font_name = word_parser.decide_style_normal(path)
+            # 处理正文标题连续性
+            res, all_title_fmt = word_parser.title_continuity(path)
+            if title_check:
+                self.title_absence = res[0]
+                self.title_wrong_order = res[1]
+            # 处理图标题连续性
+            if image_title_continue_check:
+                pass
+            # 处理表标题连续性
+            if table_title_continue_check:
+                pass
+            # 检测附录编号顺序连续性
+            if postscript_title_continue_check:
+                pass
+            # 检测参考文献顺序连续性
+            if reference_title_continue_check:
+                pass
+
+            # 表标题/图表题是否序号与标题内容之间空一字
+            image_title_fmt = all_title_fmt[5]
+            if len(image_title_fmt):
+                for elem in image_title_fmt:
+                    image_title = elem[0]
+                    if word_parser.table_title_has_space(image_title):
+                        self.title_space_error.append(image_title)
+            figure_title_fmt = all_title_fmt[6]
+            if len(figure_title_fmt):
+                for elem in figure_title_fmt:
+                    table_title = elem[0]
+                    if word_parser.table_title_has_space(table_title):
+                        self.title_space_error.append(table_title)
+
+            print('本文中图/表标题序号与图名之间没有空一字的有：'+str(len(self.title_space_error))+'个：')
+            print(self.title_space_error)
 
             # 判断封面页
             print('处理封面页中')
@@ -153,6 +209,9 @@ class Main( QMainWindow,Ui_MainWindow):
                 pass
             for i in self.cover_error:
                 print(i)
+                self.textBrowser.append(str(i))
+                QApplication.processEvents()
+                sys.stdout.flush()
 
             # 判断摘要页
             print('处理摘要页中...')
@@ -178,6 +237,8 @@ class Main( QMainWindow,Ui_MainWindow):
                 pass
             for i in self.abstract_error:
                 print(i)
+                self.textBrowser.append(str(i))
+                QApplication.processEvents()
             # 判断编审组页
             print('处理编审组页中...')
             # 编审组不调用函数
@@ -230,14 +291,24 @@ class Main( QMainWindow,Ui_MainWindow):
                     print(preface_alignment_error)
                 for i in self.BSZ_space_before_error:
                     print(i)
+                    self.textBrowser.append(str(i))
+                    QApplication.processEvents()
                 for i in self.BSZ_space_after_error:
                     print(i)
+                    self.textBrowser.append(str(i))
+                    QApplication.processEvents()
                 for i in self.BSZ_left_indent_error:
                     print(i)
+                    self.textBrowser.append(str(i))
+                    QApplication.processEvents()
                 for i in self.BSZ_right_indent_error:
                     print(i)
+                    self.textBrowser.append(str(i))
+                    QApplication.processEvents()
                 for i in self.BSZ_first_line_indent_error:
                     print(i)
+                    self.textBrowser.append(str(i))
+                    QApplication.processEvents()
 
             # 判断前言
             print('处理前言页中...')
@@ -245,6 +316,8 @@ class Main( QMainWindow,Ui_MainWindow):
             self.preface_error = word_parser.process_preface(fmt,standrad_configration,'前言')
             for i in self.preface_error:
                 print(i)
+                self.textBrowser.append(str(i))
+                QApplication.processEvents()
             sys.stdout.flush()
 
 
@@ -294,6 +367,8 @@ class Main( QMainWindow,Ui_MainWindow):
             main_part_error = word_parser.process_main_body(path,standard_main_body,title_index)
             for i in main_part_error:
                 print(i)
+                self.textBrowser.append(str(i))
+                QApplication.processEvents()
             sys.stdout.flush()
             # 首行缩进没写
 
@@ -321,6 +396,8 @@ class Main( QMainWindow,Ui_MainWindow):
                     self.text_error.append(error_res)
             for i in self.text_error:
                 print(i)
+                self.textBrowser.append(str(i))
+                QApplication.processEvents()
             # 处理表格、图像标题
 
             # 判断附录页
@@ -343,7 +420,9 @@ class Main( QMainWindow,Ui_MainWindow):
                 pass  # 二级附录可无
             for i in self.postscript_error:
                 print(i)
-            sys.stdout.flush()
+                self.textBrowser.append(str(i))
+                QApplication.processEvents()
+                sys.stdout.flush()
             # 判断文献页
             print('开始处理文献页...')
             fmt = word_parser.get_reference_format(path)
@@ -362,8 +441,11 @@ class Main( QMainWindow,Ui_MainWindow):
                 pass
             for i in self.reference_error:
                 print(i)
+                self.textBrowser.append(str(i))
+                QApplication.processEvents()
             self.textBrowser.append('检测完成！')
             self.textBrowser.append(' ')
+
             QApplication.processEvents()
         except IOError:
             print('IOError')
@@ -432,7 +514,6 @@ class setting(Ui_Child_settings):
         super().__init__(path)
         #self.path=path
         
-
     def selectionchange(self):
         main.label_6.setText(self.cb_standard.currentText())
         self.initial_setting_yml = open(path+'\cfg0.yml','w',encoding='utf-8')

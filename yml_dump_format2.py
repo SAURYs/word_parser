@@ -677,14 +677,15 @@ class check_box_new(QWidget):
         super().__init__()
 
     def check_widget(self):
+        
         layout=QGridLayout()
-        self.book_title = QCheckBox("检测书名，主编，日期一致性")
-        self.book_title.setChecked(True)
-        layout.addWidget(self.book_title,0,0)
+        #book_title = QCheckBox("检测书名，主编，日期一致性")
+        #book_title.setChecked(True)
+        #layout.addWidget(book_title,0,0)
 
-        self.title_continuous = QCheckBox("检测标题连续性    ")
+        self.title_continuous = QCheckBox("检测标题连续性")
         self.title_continuous.setChecked(True)
-        self.pic_continuous = QCheckBox("检测图片标题连续性  ")
+        self.pic_continuous = QCheckBox("检测图片标题连续性")
         self.pic_continuous.setChecked(True)
         #pagenum_continuous = QCheckBox("检测页码标题连续性")
         #pagenum_continuous.setChecked(True)
@@ -692,26 +693,26 @@ class check_box_new(QWidget):
         layout.addWidget(self.pic_continuous,1,1,Qt.AlignLeft)
         #layout.addWidget(pagenum_continuous,3,2)
 
-        self.formula_format = QCheckBox("检测公式符号格式正确性")
-        self.formula_format.setChecked(True)
-        self.formula_continuous =  QCheckBox("检测公式顺序连续性  ")
-        self.formula_continuous.setChecked(True)
-        layout.addWidget(self.formula_format,2,0,Qt.AlignLeft)
-        layout.addWidget(self.formula_continuous,2,1,Qt.AlignLeft)
+        #formula_format = QCheckBox("检测公式符号格式正确性")
+        #formula_format.setChecked(True)
+        #formula_continuous =  QCheckBox("检测公式顺序连续性  ")
+        #formula_continuous.setChecked(True)
+        #layout.addWidget(formula_format,2,0,Qt.AlignLeft)
+        #layout.addWidget(formula_continuous,2,0,Qt.AlignLeft)
 
         self.table_title = QCheckBox("检测表格标题       ")
         self.table_title.setChecked(True)
         self.measurement = QCheckBox("检测度量衡规范       ")
         self.measurement.setChecked(True)
-        layout.addWidget(self.table_title,3,0,Qt.AlignLeft)
-        layout.addWidget(self.measurement,3,1,Qt.AlignLeft)
+        layout.addWidget(self.table_title,2,0,Qt.AlignLeft)
+        layout.addWidget(self.measurement,2,1,Qt.AlignLeft)
 
         self.appendix_continuous = QCheckBox("检测附录编号顺序连续性")
         self.appendix_continuous.setChecked(True)
         self.references_continuous = QCheckBox("检测参考文献顺序连续性")
         self.references_continuous.setChecked(True)
-        layout.addWidget(self.appendix_continuous,4,0,Qt.AlignLeft)
-        layout.addWidget(self.references_continuous,4,1,Qt.AlignLeft)
+        layout.addWidget(self.appendix_continuous,3,0,Qt.AlignLeft)
+        layout.addWidget(self.references_continuous,3,1,Qt.AlignLeft)
 
         layout_widget=QWidget()
         layout_widget.setLayout(layout)
@@ -719,19 +720,19 @@ class check_box_new(QWidget):
     
     def save(self,save=0):
         if save==1:
-            check1=self.book_title.isChecked()
+            #check1=self.book_title.isChecked()
             check2=self.title_continuous.isChecked()
             check3=self.pic_continuous.isChecked()
-            check4=self.formula_format.isChecked()
-            check5=self.formula_continuous.isChecked()
+            #check4=self.formula_format.isChecked()
+            #check5=self.formula_continuous.isChecked()
             check6=self.table_title.isChecked()
             check7=self.measurement.isChecked()
             check8=self.appendix_continuous.isChecked()
             check9=self.references_continuous.isChecked()
 
-            check_savedict={"检测书名，主编，日期一致性":check1,"检测标题连续性":check2,"检测图片标题连续性":check3,"检测公式符号格式正确性":check4,
-            "检测公式顺序连续性":check5,"检测表格标题":check6,"检测度量衡规范":check7,"检测附录编号顺序连续性":check8,"检测参考文献顺序连续性":check9}
-
+            check_savedict={"检测标题连续性":check2,"检测图片标题连续性":check3,"检测表格标题":check6,"检测度量衡规范":check7,
+            "检测附录编号顺序连续性":check8,"检测参考文献顺序连续性":check9}
+            #"检测书名，主编，日期一致性":check1,"检测公式符号格式正确性":check4,"检测公式顺序连续性":check5,
             return check_savedict
 
 class Tab_new(QTabWidget,cover_new,abstract_new,author_new,preface_new,catalog_new,text_new,postscript_new,literature_new,check_box_new):#,settings_options
@@ -883,16 +884,16 @@ class Tab_new(QTabWidget,cover_new,abstract_new,author_new,preface_new,catalog_n
         # standard_list=self.file_name().values()
         #standard_list.addItems(self.file_name().values())
         return standard#,standard_list '''
-""" 
+'''
 def yml_create(name):
     desktop_path = self.path+'\'  # 新创建的txt文件的存放路径
     full_path = desktop_path + name + '.yml'  # 也可以创建一个.doc的word文档
     file = open(full_path, 'w')
-    return full_path  """
+    return full_path  '''
 
 if __name__ == "__main__":  
     app = QApplication(sys.argv)  
-    f_new_path=yml_create('cfg2')
+    f_new_path=yml_create('cfg')
     win = Tab_new(f_new_path)
     win.show()
     sys.exit(app.exec_()) 

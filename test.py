@@ -8,4 +8,4 @@ def get_standard( path):
     standard = yaml.load(f, Loader=yaml.FullLoader)
 
     return standard
-print(get_standard('cfg1.yml')['TEXT'])
+print(get_standard('cfg2.yml')['CHECK'])

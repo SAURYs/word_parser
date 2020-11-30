@@ -499,8 +499,8 @@ def get_numbered_title(path):
                 title_1_format.append(get_paragraph_format(each_paragraph))
             elif re.match(_pattern, text):
                 title_0_format.append(get_paragraph_format(each_paragraph))
-    FORMAT = [title_0_format, title_1_format, title_2_format, title_3_format, \
-                                title_4_format, table_title_format, figure_title_format,xubiaoTitle_format]
+    FORMAT = [title_0_format, title_1_format, title_2_format, title_3_format,
+                                title_4_format, table_title_format, figure_title_format, xubiaoTitle_format]
     return FORMAT
 
 
@@ -608,13 +608,23 @@ def get_paragraph_format(paragraph):
 
         font_size.append(each_run.font.size if each_run.font.size else run_style_font_size)
 
-        for index, content in enumerate(font_size):
-            if content==None:
-                pass
-            elif content < 100:
-                pass
-            else:
-                font_size[index] = content/12700
+    for index, content in enumerate(font_size):
+        if content==None:
+            pass
+        elif content < 100:
+            pass
+        else:
+            font_size[index] = content.pt
+
+    if space_before == None:
+        pass
+    else:
+        space_before = space_before/198120
+
+    if space_after == None:
+        pass
+    else:
+        space_after = space_after/198120
 
     title_content_and_format = [text,run_text, font_size, font_name, alignment, space_before, space_after, left_indent ,right_indent,first_line_indent]
 
@@ -662,6 +672,7 @@ def get_none_inherent_fornmat(paragraph):
 
     return title_content_and_format
 
+
 def get_auto_numbered_title(path):
     '''
     说明：自动编号的标题段落属性中<w:pStyle w:val="ListParagraph"/>
@@ -704,6 +715,7 @@ def get_auto_numbered_title(path):
 
 
     # return content
+
 
 def get_styles(path):
     '''
@@ -893,13 +905,6 @@ def get_SIKAOTI_fmt(path):
     return [SIKAOTI_title_fmt,SIKAOTI_content_fmt,SIKAOTI_index_list]
 
 
-
-
-
-
-
-
-
 def get_title_index(path):
     '''
         title_list:各级标题和图表标题的文字内容
@@ -979,6 +984,7 @@ def process_main_body(path,standard,title_index):
             all_errors.append(error)
     return all_errors
 
+
 def process_title(fmt,standard,type):
     '''
     处理一级标题，并报告错误，包括连续性错误？
@@ -995,8 +1001,6 @@ def process_title(fmt,standard,type):
 
 
     return all_errors
-
-
 
 
 def error_process_unit(category,detail,paragraph_fmt_elem, standard_config):
@@ -1036,6 +1040,7 @@ def error_process_unit(category,detail,paragraph_fmt_elem, standard_config):
     if alignment != standard[2]:
         alignment_error = True
     return [paragraph_fmt_elem[0],font_size_error, font_name_error,alignment_error]
+
 
 def error_process_unit_for_each_para(paragraph_fmt_elem, standard,category):
     '''
@@ -1110,6 +1115,7 @@ def error_process_unit_for_each_para(paragraph_fmt_elem, standard,category):
 
     return [paragraph_fmt_elem[0],font_size_error, font_name_error, alignment_error,space_before_error,space_after_error,left_indent_error\
             ,right_indent_error,first_line_indent_error]
+
 
 def error_process_unit_two_parts(part1,fmt,category,standard1,standard2):
     '''
@@ -1269,17 +1275,17 @@ def title_continuity(path):
         unprocessed_title_list[j] = re.sub(r, '', unprocessed_title_list[j])
         if re.match(r'^第\w{1,2}?章', unprocessed_title_list[j]):
             unprocessed_title_list[j] = unprocessed_title_list[j][1:]  # 去掉“第”字
-    print(unprocessed_title_list)
+    #print(unprocessed_title_list)
     for i in range(len(unprocessed_title_list)):
         title_list.append(extract_nums(unprocessed_title_list[i])) #得到纯数字和点的标题列表
-    print(title_list)
+    #print(title_list)
 
     ''' ----进行判断-----用到的函数有----extract_nums----title_continuous-------point_to_number-----output_miss_list----'''
     detect_result = title_continuous(title_list)
     # print(detect_result)
-    # print('缺少的标题有：', detect_result[0])
-    # print('顺序错误的标题为：', detect_result[1][0])
-    return detect_result
+    #print('缺少的标题有：', detect_result[0])
+    #print('顺序错误的标题为：', detect_result[1][0])
+    return detect_result, all_fmt
 
 
 
@@ -1478,7 +1484,7 @@ def decide_style_normal(path):
 
 if __name__ =='__main__':
 
-    path = r'C:\1机务系统教材版式规范模板-Word版-20190719.docx'
+    path = r'H:\DocFormatCheckProject\Word-check\move\版式规范\1机务系统教材版式规范模板-Word版-20190719.docx'
     #path = r'G:\v1\files_for_testing\无兼容性2机务系统教材版式规范模板-Word版-20190719.docx'
     doc = Document(path)
     normal = doc.styles['Normal']
@@ -1489,10 +1495,9 @@ if __name__ =='__main__':
         normal.font.Chinese_font_name = get_doc_default_Pr.Chinese_font_name(path)
         normal_Chinese_font_name = normal.font.Chinese_font_name
     print(normal.font.name,normal.font.Chinese_font_name)
-    RES = get_numbered_title(path)
-    for i in RES:
-        print(i)
-
+    #RES = title_continuity(path)
+    #print(RES)
+    show_all_content_fmt(path)
 
 
 
