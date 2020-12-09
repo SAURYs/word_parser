@@ -148,7 +148,7 @@ def get_table_format(path):
                 _paragraphs = cell.paragraphs
                 for each_paragraphs in _paragraphs:
                     fmt[table_index].append(get_paragraph_format(each_paragraphs))
-    return fmt
+    return fmt, table_nums
 
 
 def get_tableTitle_format(paragraph):
@@ -215,13 +215,13 @@ def table_title_has_space(title):
     '''
     该函数是判断表2-2 物种的起源这种，序号与图、表名称之间是否空1字
     '''
-    pattern = '\d+[--]\d+'
+    pattern = r'\d+.\d+\s'
     search_res = re.search(pattern, title)
     if search_res == None:
         return False
     else:
         index = search_res.end()
-    if title[index]==' ':
+    if title[index]!=' ':
         return True
     else:
         return False
@@ -259,7 +259,7 @@ def get_header_and_footer(path):
 
 def get_appendix_format(path):
     '''
-    !!!附录 二字 是宋体 目前检测为None
+    !!!!如果没有 附录标题 及 二级附录标题 则该函数返回 None
     secondary_appendix_index_list:二级附录诸如附录A，附录B等的索引列表
     secondary_appendix_format:二级附录的格式规范列表
     appendix_format: 附录 二字的格式规范
@@ -269,13 +269,18 @@ def get_appendix_format(path):
     '''
     doc = Document(path)
     pars = doc.paragraphs
+    appendix_format_index = None
     secondary_appendix_index_list = []
     secondary_appendix_format = []
     for i in range(len(pars)):
         if re.sub(' ', '', pars[i].text) == '附录': #去掉附录二字中的空格
-            appendix_format = get_paragraph_format(pars[i])
+            appendix_format_index = i
         if re.match(r'附录\w{1,2}', pars[i].text.split(' ', 1)[0]):  #匹配二级附录（先分割后匹配）
             secondary_appendix_index_list.append(i)
+    if appendix_format_index == None  and secondary_appendix_index_list == []:
+        return None,None
+    else:
+        appendix_format = get_paragraph_format(pars[appendix_format_index])
     secondary_appendix_num = len(secondary_appendix_index_list)
     for j in range(secondary_appendix_num):
         secondary_appendix_format.append(get_paragraph_format(pars[secondary_appendix_index_list[j]]))
@@ -601,7 +606,7 @@ def get_paragraph_format(paragraph):
 
 
         if each_run.text.isascii():
-            '''调试过程中发现的问题，再有的时候中文字体和ascii字符可能会存储在同一个run中，这是按照下列判断会误判'''
+            '''调试过程中发现的问题，再有的时候中文字体和ascii字符可能会存储在同一个run中，这时按照下列判断会误判'''
             font_name.append(each_run_font_name if each_run_font_name else run_style_font_name)
         else:
             font_name.append(each_run_Chinese_font_name if each_run_Chinese_font_name else run_style_font_Chinese_font_name)
@@ -626,7 +631,16 @@ def get_paragraph_format(paragraph):
     else:
         space_after = space_after/198120
 
-    title_content_and_format = [text,run_text, font_size, font_name, alignment, space_before, space_after, left_indent ,right_indent,first_line_indent]
+    if left_indent == None:
+        pass
+    else:
+        left_indent = left_indent.pt
+
+    if right_indent == None:
+        pass
+    else:
+        right_indent = right_indent.pt
+    title_content_and_format = [text, run_text, font_size, font_name, alignment, space_before, space_after, left_indent, right_indent, first_line_indent]
 
     return title_content_and_format
 
@@ -745,7 +759,8 @@ def get_cover_fmt(path):
     document = Document(path)
     paragraphs = document.paragraphs
     # end_index 是"内容提要"关键字的段索引
-    end_index = 0
+    start = -1
+    end_index = -1
     content_and_fmt = []
 
     # 教材编号
@@ -767,6 +782,8 @@ def get_cover_fmt(path):
                 break
         else:
             return None
+    if start_index == -1 or end_index == -1:
+        return None
     for index, paragraph in enumerate(paragraphs):
         if index in range(start_index, end_index) and paragraph.text.replace(' ', '') != '':
             content_and_fmt.append(get_paragraph_format(paragraph))
@@ -782,6 +799,8 @@ def get_informative_abstract_fmt(path):
     paragraphs = document.paragraphs
     content_and_fmt = []
     next_part_title = '教材体系工程'
+    start_index = -1
+    end_index = -1
     for index, paragraph in enumerate(paragraphs):
         if index < 130:
             if paragraph.text.replace(' ','') == '内容提要':
@@ -798,6 +817,8 @@ def get_informative_abstract_fmt(path):
                 break
         else:
             return None
+    if start_index == -1 or end_index == -1:
+        return None
     for index, paragraph in enumerate(paragraphs):
         if index in range(start_index, end_index) and paragraph.text.replace(' ', '') != '':
             content_and_fmt.append(get_paragraph_format(paragraph))
@@ -812,6 +833,8 @@ def get_BSZ_fmt(path):
     document = Document(path)
     paragraphs = document.paragraphs
     content_and_fmt = []
+    start_index = -1
+    end_index = -1
     next_part_title = '前言'
     '''
     for index, paragraph in enumerate(paragraphs):
@@ -841,6 +864,9 @@ def get_BSZ_fmt(path):
                 break
         else:
             return None
+
+    if start_index == -1 or end_index == -1:
+        return None
     for index, paragraph in enumerate(paragraphs):
         if index in range(start_index, end_index) and paragraph.text.replace(' ', '') != '':
             content_and_fmt.append(get_paragraph_format(paragraph))
@@ -856,6 +882,8 @@ def get_preface_fmt(path, start_index=0):
     paragraphs = document.paragraphs
     content_and_fmt = []
     next_part_title = '目录'
+    start_index = -1
+    end_index = -1
     # 获取该页的起始页
     for index, paragraph in enumerate(paragraphs):
         if index < 200:
@@ -873,6 +901,8 @@ def get_preface_fmt(path, start_index=0):
                 break
         else:
             return None
+    if start_index == -1 or end_index == -1:
+        return None
     for index, paragraph in enumerate(paragraphs):
         if index in range(start_index, end_index-1) and paragraph.text.replace(' ', '') != '':
             content_and_fmt.append(get_paragraph_format(paragraph))
@@ -927,7 +957,7 @@ def get_title_index(path):
             title_index_list.append(m)
     for n in range(len(title_index_list)):
         del body_index[title_index_list[n]]
-    return title_index_list
+    return fmt, title_index_list
 
 
 def process_main_body(path,standard,title_index):
@@ -1067,7 +1097,7 @@ def error_process_unit_for_each_para(paragraph_fmt_elem, standard,category):
     first_line_indent_error = False
 
     format_font_size_pt = {'八号': 5, '七号': 5.5, '小六': 6.5, '六号': 7.5, '小五': 9, '五号': 10.5,
-                           '小四': 12, '四号': 14, '小三': 15, '三号': 16, '小二': 18, '二号': 22, '一号': 26, '小初': 36}
+                           '小四': 12, '四号': 14, '小三': 15, '三号': 16, '小二': 18, '二号': 22, '一号': 26, '小初': 36,'初号': 42}
     # 判断字号
     font_size = format_font_size_pt[standard[0]]
     font_name = standard[1]
@@ -1130,6 +1160,7 @@ def error_process_unit_two_parts(part1,fmt,category,standard1,standard2):
     '''
     font_name_error = []
     font_size_error = []
+    '''
     standard1[2] = float(standard1[2])
     standard1[3] = float(standard1[3])
     standard1[4] = float(standard1[4])
@@ -1140,12 +1171,14 @@ def error_process_unit_two_parts(part1,fmt,category,standard1,standard2):
     standard2[4] = float(standard2[4])
     standard2[5] = float(standard2[5])
     standard2[6] = float(standard2[6])
+    '''
     format_font_size_pt = {'八号': 5, '七号': 5.5, '小六': 6.5, '六号': 7.5, '小五': 9, '五号': 10.5,
-                           '小四': 12, '四号': 14, '小三': 15, '三号': 16, '小二': 18, '二号': 22, '一号': 26, '小初': 36}
+                           '小四': 12, '四号': 14, '小三': 15, '三号': 16, '小二': 18, '二号': 22, '一号': 26, '小初': 36,'初号': 42}
     temp = ''
     check_index = [-1]
     for index_part1, content_part1 in enumerate(fmt[1]):
         temp += content_part1.replace(' ','')
+        # 有待仔细考证，再三思索
         if temp == part1:
             check_index[0] = index_part1
             break
@@ -1155,34 +1188,36 @@ def error_process_unit_two_parts(part1,fmt,category,standard1,standard2):
     for index_font_size, run_font_size in enumerate(fmt[2]):
             if index_font_size <= check_index[0]:
                 if run_font_size != format_font_size_pt[standard1[0]]:
-                    font_size_error.append(category+part1+':'+ '"'+fmt[1][index_font_size]+'"'+'，字体大小不正确，应为' + standard1[0])
+                    font_size_error.append(fmt[1][index_font_size])
     # 判断字体名称
     # content[3]是每个run中字体名称的集合
     for index_font_name, run_font_name in enumerate(fmt[3]):
             if index_font_name <= check_index[0]:
 
-                if run_font_name != standard2[1]:
-                    font_name_error.append(category+':'+ '"'+fmt[1][index_font_name]+'"'+'字体不正确，应为' + standard2[1])
+                if run_font_name != standard1[1]:
+                    font_name_error.append(fmt[1][index_font_name])
     # ==========================处理part2===============================
     # 判断字体大小
     # content[2]是每个run中字体大小的集合
     for index_font_size, run_font_size in enumerate(fmt[2]):
         if index_font_size > check_index[0]:
             if run_font_size != format_font_size_pt[standard2[0]]:
-                font_size_error.append(category+':'+ '"'+fmt[1][index_font_size]+'"'+' 字体大小不正确，应为' + standard2[0])
+                font_size_error.append(fmt[1][index_font_size])
     # 判断字体名称
     # content[3]是每个run中字体名称的集合
     for index_font_name, run_font_name in enumerate(fmt[3]):
         if index_font_name > check_index[0]:
             if run_font_name != standard2[1]:
-                font_name_error.append(category+':'+ '"'+fmt[1][index_font_name]+'"'+'字体不正确，应为' + standard2[1])
+                font_name_error.append(fmt[1][index_font_name])
+    # 判断居中方式
     # 判断居中方式
     # 段前距
     # 段后距
     # 左缩进
     # 右缩进
     # 首行缩进
-    return [font_size_error,font_name_error]
+    # 先暂时不判断居中，默认无错
+    return [fmt[0],font_size_error,font_name_error,False]
 
 
 def process_preface(fmt,standard,type):
@@ -1482,6 +1517,24 @@ def decide_style_normal(path):
         normal_Chinese_font_name = normal.font.Chinese_font_name
     return normal_font_name, normal_Chinese_font_name
 
+def has_error_or_not(fmt):
+    font_size_error = True if len(fmt[1]) else False
+    font_name_error = True if len(fmt[2]) else False
+    res = font_size_error or font_name_error or fmt[3]
+    if res :
+        return True
+
+    if len(fmt)>4:
+        for i in fmt[4:]:
+            res = res and i
+            if res:
+                return True
+    return res
+
+
+
+
+
 if __name__ =='__main__':
 
     path = r'H:\DocFormatCheckProject\Word-check\move\版式规范\1机务系统教材版式规范模板-Word版-20190719.docx'
@@ -1497,6 +1550,10 @@ if __name__ =='__main__':
     print(normal.font.name,normal.font.Chinese_font_name)
     #RES = title_continuity(path)
     #print(RES)
+    res = get_BSZ_fmt(path)
+    #print(res)
+    res1 = error_process_unit_two_parts('组长：',res[2],None,['三号','黑体'],['三号','楷体'])
+    print(res1)
     show_all_content_fmt(path)
 
 

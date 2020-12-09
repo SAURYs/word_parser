@@ -1,11 +1,17 @@
-import yaml
-import parser
-def get_standard( path):
-    '''
-    :param path: 标准文件的路径
-    '''
-    f = open(path,'r',encoding='utf-8')
-    standard = yaml.load(f, Loader=yaml.FullLoader)
+#!/usr/bin/python
+import sys
+import traceback
+import os
 
-    return standard
-print(get_standard('cfg2.yml')['CHECK'])
+diary_log_path = os.path.join(os.getcwd(), r'1111.log')
+outputfile = open(diary_log_path, 'w', encoding='UTF-8')
+sys.stdout = outputfile
+c =3
+d = 0
+
+try:
+    a = c/d
+except Exception as e:
+    #print('invoking division failed.')
+    traceback.print_exc(file = outputfile)
+print('jixu')
